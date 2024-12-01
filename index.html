@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <title>YouTube Export Meta Data</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- DataTables CSS -->
+    <link
+      href="https://cdn.datatables.net/v/bs5/jq-3.7.0/jszip-3.10.1/dt-2.1.8/b-3.2.0/b-colvis-3.2.0/b-html5-3.2.0/b-print-3.2.0/cr-2.0.4/date-1.5.4/fc-5.0.4/fh-4.0.1/kt-2.12.1/r-3.0.3/rg-1.5.1/rr-1.5.0/sc-2.4.3/sb-1.8.1/sp-2.3.3/sl-2.1.0/sr-1.4.1/datatables.min.css"
+      rel="stylesheet"
+    />
+    <!-- ApexCharts CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/apexcharts@3.35.3/dist/apexcharts.css"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    />
+    <!-- Custom CSS -->
+    <style>
+      body {
+        padding-top: 70px;
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      .toast-container {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1055;
+      }
+
+      /* Dark Mode Styles */
+      [data-bs-theme="dark"] {
+        background-color: #121212;
+        color: #ffffff;
+      }
+
+      [data-bs-theme="dark"] .card {
+        background-color: #1e1e1e;
+        border-color: #333333;
+      }
+
+      [data-bs-theme="dark"] .table {
+        color: #ffffff;
+      }
+
+      [data-bs-theme="dark"] .form-control {
+        background-color: #2c2c2c;
+        color: #ffffff;
+        border-color: #444444;
+      }
+
+      [data-bs-theme="dark"] .btn-primary {
+        background-color: #3a3a3a;
+        border-color: #555555;
+      }
+
+      /* Loading Spinner Overlay */
+      #loadingOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+        display: none;
+        transition: opacity 0.3s;
+      }
+
+      [data-bs-theme="dark"] #loadingOverlay {
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      /* Ko-fi Button Position */
+      .kofi-widget {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1060;
+      }
+
+      /* Animations */
+      .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* Progress Bar */
+      #progressContainer {
+        display: none;
+        margin-bottom: 20px;
+      }
+
+      /* Compact Table Styles */
+      table.dataTable tbody tr {
+        height: 30px;
+      }
+
+      table.dataTable td,
+      table.dataTable th {
+        padding: 8px 10px;
+        font-size: 0.875rem;
+      }
+
+      /* ApexCharts Container */
+      #chartsTabContent {
+        padding: 20px;
+      }
+
+      /* Responsive Chart */
+      .apexcharts-canvas {
+        width: 100% !important;
+      }
+
+      /* Thumbnail and Download Button Styles */
+      .thumbnail-download-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .thumbnail-download-container img {
+        max-width: 100px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+    <script>
+      kofiWidgetOverlay.draw("enisgjini", {
+        type: "floating-chat",
+        "floating-chat.donateButton.text": "Support me",
+        "floating-chat.donateButton.background-color": "#fcbf47",
+        "floating-chat.donateButton.text-color": "#323842",
+      });
+    </script>
+    <div class="container">
+      <!-- Dark Mode Toggle -->
+      <div class="d-flex justify-content-end mb-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="darkModeToggle" />
+          <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+        </div>
+      </div>
+      <h1 class="mb-4 text-center fade-in">YouTube Export Meta Data</h1>
+      <!-- Nav Tabs -->
+      <ul class="nav nav-tabs" id="appTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link active"
+            id="table-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#tableTabContent"
+            type="button"
+            role="tab"
+            aria-controls="tableTabContent"
+            aria-selected="true"
+          >
+            Data Table
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="charts-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#chartsTabContent"
+            type="button"
+            role="tab"
+            aria-controls="chartsTabContent"
+            aria-selected="false"
+          >
+            Charts
+          </button>
+        </li>
+      </ul>
+      <div class="tab-content" id="appTabContent">
+        <!-- Data Table Tab -->
+        <div
+          class="tab-pane fade show active"
+          id="tableTabContent"
+          role="tabpanel"
+          aria-labelledby="table-tab"
+        >
+          <!-- Input Form -->
+          <div class="card mb-4 fade-in mt-3">
+            <div class="card-body">
+              <form id="metaDataForm">
+                <div class="row g-3">
+                  <div class="col-md-6 position-relative">
+                    <label for="apiKey" class="form-label">
+                      YouTube API Key
+                      <span
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Enter your YouTube Data API key."
+                      >
+                        <i class="bi bi-info-circle"></i>
+                      </span>
+                    </label>
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="apiKey"
+                        placeholder="Enter your API Key"
+                        required
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        id="clearApiKeyBtn"
+                        title="Clear API Key"
+                      >
+                        <i class="bi bi-x-circle"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="channelId" class="form-label">
+                      Channel ID
+                      <span
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Enter the YouTube Channel ID you want to export data from."
+                      >
+                        <i class="bi bi-info-circle"></i>
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="channelId"
+                      placeholder="Enter Channel ID"
+                      required
+                    />
+                  </div>
+                </div>
+                <div
+                  class="mt-3 d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <button type="submit" class="btn btn-primary">
+                      Fetch Meta Data
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      id="toggleViewBtn"
+                      class="btn btn-secondary"
+                    >
+                      Switch to Compact View
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- Progress Bar -->
+          <div id="progressContainer">
+            <div class="progress">
+              <div
+                id="progressBar"
+                class="progress-bar"
+                role="progressbar"
+                style="width: 0%"
+                aria-valuenow="0"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                0%
+              </div>
+            </div>
+          </div>
+          <!-- DataTable -->
+          <div class="card fade-in">
+            <div class="card-body">
+              <table
+                id="metaDataTable"
+                class="table table-striped table-hover compact"
+                style="width: 100%"
+              >
+                <thead>
+                  <tr>
+                    <th>Video ID</th>
+                    <th>Thumbnail</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Published At</th>
+                    <th>Duration</th>
+                    <th>View Count</th>
+                    <th>Like Count</th>
+                    <th>Comment Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Data will be populated here via jQuery -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- Charts Tab -->
+        <div
+          class="tab-pane fade"
+          id="chartsTabContent"
+          role="tabpanel"
+          aria-labelledby="charts-tab"
+        >
+          <div class="fade-in mt-3">
+            <!-- View Count Chart -->
+            <div class="card mb-4">
+              <div class="card-body">
+                <h5 class="card-title">Top 10 Videos by View Count</h5>
+                <div id="viewCountChart"></div>
+              </div>
+            </div>
+            <!-- Like vs. View Count Chart -->
+            <div class="card mb-4">
+              <div class="card-body">
+                <h5 class="card-title">Likes vs. Views</h5>
+                <div id="likesViewsChart"></div>
+              </div>
+            </div>
+            <!-- Comment Count Chart -->
+            <div class="card mb-4">
+              <div class="card-body">
+                <h5 class="card-title">Top 10 Videos by Comment Count</h5>
+                <div id="commentCountChart"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Toast Notifications -->
+      <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div
+          id="toastLive"
+          class="toast align-items-center text-bg-primary border-0"
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
+          <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+              Hello, world! This is a toast message.
+            </div>
+            <button
+              type="button"
+              class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"
+              aria-label="Close"
+            ></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS and Extensions -->
+    <script src="https://cdn.datatables.net/v/bs5/jq-3.7.0/jszip-3.10.1/dt-2.1.8/af-2.7.0/b-3.2.0/b-colvis-3.2.0/b-html5-3.2.0/b-print-3.2.0/cr-2.0.4/date-1.5.4/fc-5.0.4/fh-4.0.1/kt-2.12.1/r-3.0.3/rg-1.5.1/rr-1.5.0/sc-2.4.3/sb-1.8.1/sp-2.3.3/sl-2.1.0/sr-1.4.1/datatables.min.js"></script>
+    <!-- FileSaver.js for additional export formats -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- ApexCharts JS -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.35.3/dist/apexcharts.min.js"></script>
+    <!-- Custom JS -->
+    <script>
+      $(document).ready(function () {
+        // Initialize tooltips
+        $('[data-bs-toggle="tooltip"]').tooltip();
+
+        // Initialize DataTable with Extensions
+        const table = $("#metaDataTable").DataTable({
+          columns: [
+            { data: "videoId" },
+            { data: "thumbnailDefault", orderable: false },
+            { data: "title" },
+            { data: "description" },
+            { data: "publishedAt" },
+            { data: "duration" },
+            { data: "viewCount" },
+            { data: "likeCount" },
+            { data: "commentCount" },
+          ],
+          language: {
+            emptyTable: "No data available. Please fetch metadata.",
+          },
+          responsive: true,
+          dom:
+            "<'row text-center mb-3'<'col-sm-12 col-md-4 d-flex justify-content-center align-items-center'l><'col-sm-12 col-md-4 d-flex justify-content-center align-items-center'B><'col-sm-12 col-md-4 d-flex justify-content-center align-items-center'f>>" +
+            "<'row'<'col-sm-12'tr>>" +
+            "<'row mt-3 text-center'<'col-sm-12 col-md-6 d-flex justify-content-center align-items-center'i><'col-sm-12 col-md-6 d-flex justify-content-center align-items-center'p>>",
+          buttons: [
+            // Column Visibility Button
+            {
+              extend: "colvis",
+              className: "btn btn-info btn-sm me-2",
+              text: "Columns",
+            },
+            // CSV Export Button
+            {
+              extend: "csv",
+              title: "YouTube_Metadata",
+              className: "btn btn-primary btn-sm me-2",
+              exportOptions: { columns: ":visible:not(:first-child)" }, // Exclude Video ID column if needed
+            },
+            // Excel Export Button
+            {
+              extend: "excel",
+              title: "YouTube_Metadata",
+              className: "btn btn-success btn-sm me-2",
+              exportOptions: { columns: ":visible:not(:first-child)" },
+            },
+            // PDF Export Button
+            {
+              extend: "pdf",
+              title: "YouTube_Metadata",
+              className: "btn btn-danger btn-sm me-2",
+              exportOptions: { columns: ":visible:not(:first-child)" },
+            },
+            // Print Export Button
+            {
+              extend: "print",
+              title: "YouTube Metadata",
+              className: "btn btn-secondary btn-sm",
+              exportOptions: { columns: ":visible:not(:first-child)" },
+            },
+          ],
+          searchPanes: {
+            cascadePanes: true,
+            viewTotal: true,
+          },
+          select: {
+            style: "multi",
+            selector: "td:first-child",
+          },
+          colReorder: true,
+          fixedHeader: true,
+          stateSave: true,
+          columnDefs: [
+            {
+              targets: 1, // Thumbnail column
+              render: function (data, type, row) {
+                if (type === "display") {
+                  return `
+                    <div class="thumbnail-download-container">
+                      <img src="${data}" alt="Thumbnail" width="100">
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          Download
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item download-thumbnail" href="#" data-url="${row.thumbnailDefault}" data-name="${row.videoId}_default">Default</a></li>
+                          <li><a class="dropdown-item download-thumbnail" href="#" data-url="${row.thumbnailMedium}" data-name="${row.videoId}_medium">Medium</a></li>
+                          <li><a class="dropdown-item download-thumbnail" href="#" data-url="${row.thumbnailHigh}" data-name="${row.videoId}_high">High</a></li>
+                          <li><a class="dropdown-item download-thumbnail" href="#" data-url="${row.thumbnailStandard}" data-name="${row.videoId}_standard">Standard</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  `;
+                }
+                return data;
+              },
+            },
+            {
+              targets: 4, // Published At column
+              render: function (data) {
+                return new Date(data).toLocaleDateString();
+              },
+            },
+            {
+              targets: [6, 7, 8], // View Count, Like Count, Comment Count columns
+              render: function (data) {
+                return parseInt(data).toLocaleString();
+              },
+            },
+          ],
+        });
+
+        // Initialize SearchPanes
+        new $.fn.dataTable.SearchPanes(table);
+
+        // Initialize Toast
+        const toastEl = $("#toastLive");
+        const toast = new bootstrap.Toast(toastEl[0]);
+        const showToast = (message, bgColor = "primary") => {
+          $("#toastBody").text(message);
+          toastEl
+            .removeClass(
+              "text-bg-primary text-bg-danger text-bg-success text-bg-warning text-bg-info"
+            )
+            .addClass(`text-bg-${bgColor}`);
+          toast.show();
+        };
+
+        // Loading Overlay Control
+        const showLoading = () => $("#loadingOverlay").fadeIn(300);
+        const hideLoading = () => $("#loadingOverlay").fadeOut(300);
+
+        // Theme Persistence
+        const currentTheme = localStorage.getItem("theme") || "light";
+        $("html").attr("data-bs-theme", currentTheme);
+        $("#darkModeToggle").prop("checked", currentTheme === "dark");
+        $("#darkModeToggle").on("change", function () {
+          const theme = this.checked ? "dark" : "light";
+          $("html").attr("data-bs-theme", theme);
+          localStorage.setItem("theme", theme);
+          showToast(
+            `${theme.charAt(0).toUpperCase() + theme.slice(1)} mode enabled!`,
+            "warning"
+          );
+        });
+
+        // Retrieve API Key from localStorage on Page Load
+        const storedApiKey = localStorage.getItem("youtubeApiKey");
+        if (storedApiKey) {
+          $("#apiKey").val(storedApiKey);
+          showToast("API Key loaded from local storage.", "info");
+        }
+
+        // Clear API Key Button Handler
+        $("#clearApiKeyBtn").on("click", function () {
+          $("#apiKey").val("");
+          localStorage.removeItem("youtubeApiKey");
+          showToast("API Key has been cleared.", "warning");
+        });
+
+        // Form Submission Handler
+        $("#metaDataForm").on("submit", function (e) {
+          e.preventDefault();
+          const apiKey = $("#apiKey").val().trim();
+          const channelId = $("#channelId").val().trim();
+          if (!apiKey || !channelId)
+            return showToast(
+              "Please enter both API Key and Channel ID.",
+              "danger"
+            );
+
+          // Save API Key to localStorage
+          localStorage.setItem("youtubeApiKey", apiKey);
+
+          fetchYouTubeData(apiKey, channelId);
+        });
+
+        // Fetch YouTube Data
+        const fetchYouTubeData = async (apiKey, channelId) => {
+          showLoading();
+          showToast("Fetching data...", "primary");
+          table.clear().draw();
+          $("#progressContainer").show();
+          updateProgress(0);
+          try {
+            const channelData = await $.get(
+              "https://www.googleapis.com/youtube/v3/channels",
+              {
+                part: "contentDetails",
+                id: channelId,
+                key: apiKey,
+              }
+            );
+            if (!channelData.items.length)
+              throw new Error("Channel not found.");
+            const uploadsPlaylistId =
+              channelData.items[0].contentDetails.relatedPlaylists.uploads;
+            const allVideos = await getAllVideos(apiKey, uploadsPlaylistId);
+            const videoDetails = await fetchVideoDetailsInBatches(
+              apiKey,
+              allVideos.map((v) => v.contentDetails.videoId)
+            );
+            table.rows.add(videoDetails).draw();
+            showToast("Data fetched successfully!", "success");
+            renderCharts(videoDetails); // Render charts after data is fetched
+          } catch (error) {
+            showToast(error.message || "An error occurred.", "danger");
+          } finally {
+            hideLoading();
+            $("#progressContainer").hide();
+          }
+        };
+
+        // Get All Videos from Playlist
+        const getAllVideos = (apiKey, playlistId) => {
+          return new Promise((resolve, reject) => {
+            let videos = [];
+            const fetchPage = (pageToken = "") => {
+              $.get("https://www.googleapis.com/youtube/v3/playlistItems", {
+                part: "snippet,contentDetails",
+                playlistId,
+                maxResults: 50,
+                pageToken,
+                key: apiKey,
+              })
+                .done((response) => {
+                  videos = [...videos, ...response.items];
+                  const total = response.pageInfo.totalResults;
+                  const fetched = videos.length;
+                  const percent = total ? (fetched / total) * 100 : 100;
+                  updateProgress(Math.min(percent, 100));
+                  response.nextPageToken
+                    ? fetchPage(response.nextPageToken)
+                    : resolve(videos);
+                })
+                .fail((jqXHR) =>
+                  reject(
+                    new Error(
+                      jqXHR.responseJSON?.error?.message ||
+                        "Failed to fetch playlist items."
+                    )
+                  )
+                );
+            };
+            fetchPage();
+          });
+        };
+
+        // Fetch Video Details in Batches
+        const fetchVideoDetailsInBatches = (apiKey, videoIds) => {
+          return new Promise(async (resolve, reject) => {
+            const batchSize = 50;
+            const totalBatches = Math.ceil(videoIds.length / batchSize);
+            let allVideoDetails = [];
+            for (let i = 0; i < totalBatches; i++) {
+              const batchIds = videoIds
+                .slice(i * batchSize, (i + 1) * batchSize)
+                .join(",");
+              try {
+                const response = await $.get(
+                  "https://www.googleapis.com/youtube/v3/videos",
+                  {
+                    part: "snippet,statistics,contentDetails",
+                    id: batchIds,
+                    key: apiKey,
+                  }
+                );
+                const batchData = response.items.map((item) => ({
+                  videoId: item.id,
+                  thumbnailDefault: item.snippet.thumbnails.default.url,
+                  thumbnailMedium: item.snippet.thumbnails.medium.url,
+                  thumbnailHigh: item.snippet.thumbnails.high.url,
+                  thumbnailStandard:
+                    item.snippet.thumbnails.standard?.url ||
+                    item.snippet.thumbnails.high.url, // Fallback if standard not available
+                  title: item.snippet.title,
+                  description: item.snippet.description,
+                  publishedAt: item.snippet.publishedAt,
+                  duration: parseDuration(item.contentDetails.duration),
+                  viewCount: parseInt(item.statistics.viewCount) || 0,
+                  likeCount: parseInt(item.statistics.likeCount) || 0,
+                  commentCount: parseInt(item.statistics.commentCount) || 0,
+                }));
+                allVideoDetails.push(...batchData);
+                updateProgress(Math.min(((i + 1) / totalBatches) * 100, 100));
+              } catch (error) {
+                return reject(
+                  new Error(
+                    error.responseJSON?.error?.message ||
+                      "Failed to fetch video details."
+                  )
+                );
+              }
+            }
+            resolve(allVideoDetails);
+          });
+        };
+
+        // Parse ISO 8601 Duration
+        const parseDuration = (duration) => {
+          const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+          const [, hours, minutes, seconds] = duration.match(regex) || [];
+          return `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m ` : ""}${
+            seconds ? `${seconds}s` : ""
+          }`.trim();
+        };
+
+        // Update Progress Bar
+        const updateProgress = (percent) => {
+          $("#progressBar")
+            .css("width", `${percent}%`)
+            .attr("aria-valuenow", percent)
+            .text(`${Math.floor(percent)}%`);
+        };
+
+        // Toggle Table View (Compact/Expanded)
+        $("#toggleViewBtn").on("click", function () {
+          const isCompact = $(this).text().includes("Compact");
+          const columnsToToggle = [3]; // Description column
+          columnsToToggle.forEach((colIdx) =>
+            table.column(colIdx).visible(!isCompact)
+          );
+          $(this).text(
+            isCompact ? "Switch to Expanded View" : "Switch to Compact View"
+          );
+          showToast(
+            `Switched to ${isCompact ? "Compact" : "Expanded"} View`,
+            "info"
+          );
+        });
+
+        // Handle Thumbnail Download
+        $(document).on("click", ".download-thumbnail", function (e) {
+          e.preventDefault();
+          const url = $(this).data("url");
+          const name = $(this).data("name");
+          if (url) {
+            downloadThumbnail(url, name);
+          } else {
+            showToast("Thumbnail URL not available.", "warning");
+          }
+        });
+
+        // Adjusted downloadThumbnail Function
+        const downloadThumbnail = (url, name) => {
+          // Attempt to fetch the image blob with CORS mode
+          fetch(url, { mode: "cors" })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Network response was not ok");
+              }
+              return response.blob();
+            })
+            .then((blob) => {
+              saveAs(blob, `${name}.jpg`); // Utilize FileSaver.js's saveAs
+              showToast(
+                `Thumbnail "${name}" downloaded successfully.`,
+                "success"
+              );
+            })
+            .catch((error) => {
+              console.error("Error downloading thumbnail:", error);
+              showToast("Failed to download thumbnail.", "danger");
+            });
+        };
+
+        // Render Charts using ApexCharts
+        const renderCharts = (videoDetails) => {
+          // Sort videos by viewCount descending
+          const topViews = videoDetails
+            .sort((a, b) => b.viewCount - a.viewCount)
+            .slice(0, 10)
+            .map((video) => ({
+              name: video.title,
+              data: video.viewCount,
+            }));
+
+          // Prepare data for Likes vs Views
+          const likesViews = videoDetails
+            .sort((a, b) => b.viewCount - a.viewCount)
+            .slice(0, 10)
+            .map((video) => ({
+              x: video.viewCount,
+              y: video.likeCount,
+              name: video.title,
+            }));
+
+          // Sort videos by commentCount descending
+          const topComments = videoDetails
+            .sort((a, b) => b.commentCount - a.commentCount)
+            .slice(0, 10)
+            .map((video) => ({
+              name: video.title,
+              data: video.commentCount,
+            }));
+
+          // View Count Chart
+          const viewCountOptions = {
+            chart: {
+              type: "bar",
+              height: 350,
+              toolbar: {
+                show: true,
+              },
+            },
+            plotOptions: {
+              bar: {
+                horizontal: false,
+                columnWidth: "55%",
+                endingShape: "rounded",
+              },
+            },
+            dataLabels: {
+              enabled: false,
+            },
+            series: [
+              {
+                name: "View Count",
+                data: topViews.map((video) => video.data),
+              },
+            ],
+            xaxis: {
+              categories: topViews.map((video) => video.name),
+              labels: {
+                rotate: -45,
+                style: {
+                  fontSize: "12px",
+                },
+              },
+            },
+            yaxis: {
+              title: {
+                text: "Views",
+              },
+            },
+            fill: {
+              opacity: 1,
+            },
+            tooltip: {
+              y: {
+                formatter: function (val) {
+                  return val.toLocaleString();
+                },
+              },
+            },
+          };
+
+          const viewCountChart = new ApexCharts(
+            document.querySelector("#viewCountChart"),
+            viewCountOptions
+          );
+          viewCountChart.render();
+
+          // Likes vs Views Scatter Chart
+          const likesViewsOptions = {
+            chart: {
+              type: "scatter",
+              height: 350,
+              toolbar: {
+                show: true,
+              },
+            },
+            xaxis: {
+              title: {
+                text: "Views",
+              },
+              labels: {
+                formatter: function (val) {
+                  return val.toLocaleString();
+                },
+              },
+            },
+            yaxis: {
+              title: {
+                text: "Likes",
+              },
+              labels: {
+                formatter: function (val) {
+                  return val.toLocaleString();
+                },
+              },
+            },
+            series: [
+              {
+                name: "Likes vs Views",
+                data: likesViews,
+              },
+            ],
+            tooltip: {
+              y: {
+                formatter: function (val, opts) {
+                  const video = likesViews[opts.dataPointIndex];
+                  return `${val.toLocaleString()} Likes<br>${video.name}`;
+                },
+              },
+              x: {
+                formatter: function (val) {
+                  return val.toLocaleString();
+                },
+              },
+            },
+          };
+
+          const likesViewsChart = new ApexCharts(
+            document.querySelector("#likesViewsChart"),
+            likesViewsOptions
+          );
+          likesViewsChart.render();
+
+          // Comment Count Chart
+          const commentCountOptions = {
+            chart: {
+              type: "bar",
+              height: 350,
+              toolbar: {
+                show: true,
+              },
+            },
+            plotOptions: {
+              bar: {
+                horizontal: true,
+                columnWidth: "55%",
+                endingShape: "rounded",
+              },
+            },
+            dataLabels: {
+              enabled: false,
+            },
+            series: [
+              {
+                name: "Comment Count",
+                data: topComments.map((video) => video.data),
+              },
+            ],
+            xaxis: {
+              categories: topComments.map((video) => video.name),
+              labels: {
+                style: {
+                  fontSize: "12px",
+                },
+              },
+            },
+            yaxis: {
+              title: {
+                text: "Comments",
+              },
+            },
+            fill: {
+              opacity: 1,
+            },
+            tooltip: {
+              y: {
+                formatter: function (val) {
+                  return val.toLocaleString();
+                },
+              },
+            },
+          };
+
+          const commentCountChart = new ApexCharts(
+            document.querySelector("#commentCountChart"),
+            commentCountOptions
+          );
+          commentCountChart.render();
+        };
+      });
+    </script>
+  </body>
+</html>
